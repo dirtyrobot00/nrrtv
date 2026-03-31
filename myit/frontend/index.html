@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="myit — 내 질문이 내 지식이 되고, 최신 정보가 내 관점을 업데이트한다">
+    <title>myit — My Insightful Trader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- 사이드바 -->
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-brand">
+                <h1 class="logo">my<span class="logo-accent">it</span></h1>
+                <p class="logo-sub">My Insightful Trader</p>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" data-page="home" class="nav-link active">
+                    <span class="nav-icon">🏠</span> 홈
+                </a></li>
+                <li><a href="#" data-page="ask" class="nav-link">
+                    <span class="nav-icon">💬</span> 질문하기
+                </a></li>
+                <li><a href="#" data-page="cards" class="nav-link">
+                    <span class="nav-icon">📋</span> 인사이트 카드
+                </a></li>
+                <li><a href="#" data-page="events" class="nav-link">
+                    <span class="nav-icon">📰</span> 공시/뉴스
+                </a></li>
+                <li><a href="#" data-page="trades" class="nav-link">
+                    <span class="nav-icon">📊</span> 매매 기록
+                </a></li>
+                <li><a href="#" data-page="search" class="nav-link">
+                    <span class="nav-icon">🔍</span> 검색
+                </a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="disclaimer">
+                    ⚠️ 정보 제공 목적이며<br>투자 추천이 아닙니다
+                </div>
+            </div>
+        </nav>
+
+        <!-- 메인 콘텐츠 -->
+        <main id="main-content" class="main-content">
+            <!-- 로그인 페이지 -->
+            <div id="page-login" class="page active">
+                <div class="auth-container">
+                    <div class="auth-card glass-card">
+                        <h1 class="logo logo-large">my<span class="logo-accent">it</span></h1>
+                        <p class="auth-subtitle">내 질문이 내 지식이 됩니다</p>
+
+                        <form id="login-form" class="auth-form">
+                            <div class="form-group">
+                                <input type="email" id="login-email" placeholder="이메일" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="password" id="login-password" placeholder="비밀번호" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-full">로그인</button>
+                        </form>
+
+                        <div class="auth-divider"><span>또는</span></div>
+
+                        <form id="register-form" class="auth-form">
+                            <div class="form-group">
+                                <input type="email" id="reg-email" placeholder="이메일" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="text" id="reg-nickname" placeholder="닉네임 (선택)">
+                            </div>
+                            <div class="form-group">
+                                <input type="password" id="reg-password" placeholder="비밀번호" required>
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-full">회원가입</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 홈 페이지 -->
+            <div id="page-home" class="page">
+                <div class="page-header">
+                    <h2>🏠 홈</h2>
+                    <span id="home-greeting" class="greeting"></span>
+                </div>
+
+                <!-- My Pulse -->
+                <section class="section">
+                    <h3 class="section-title">📈 My Pulse</h3>
+                    <div id="my-pulse" class="pulse-grid">
+                        <div class="skeleton-card"></div>
+                    </div>
+                </section>
+
+                <!-- Since Your Last Visit -->
+                <section class="section">
+                    <h3 class="section-title">🔔 Since Your Last Visit</h3>
+                    <div id="since-last-visit" class="update-list">
+                        <p class="empty-state">새로운 업데이트가 없습니다</p>
+                    </div>
+                </section>
+
+                <!-- Today's 1 Insight -->
+                <section class="section">
+                    <h3 class="section-title">💡 Today's 1 Insight</h3>
+                    <div id="todays-insight" class="insight-spotlight glass-card">
+                        <p class="empty-state">저장된 인사이트가 없습니다. 질문을 시작해보세요!</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- 질문 페이지 -->
+            <div id="page-ask" class="page">
+                <div class="page-header">
+                    <h2>💬 질문하기</h2>
+                </div>
+                <div class="ask-container">
+                    <div class="ask-card glass-card">
+                        <textarea id="question-input" class="question-textarea"
+                            placeholder="투자에 대해 궁금한 것을 물어보세요...&#10;예: 삼성전자의 최근 실적 트렌드는?&#10;예: 반도체 업황에 영향을 주는 핵심 지표는?"></textarea>
+                        <div class="ask-options">
+                            <input type="text" id="ask-tickers" class="input-small"
+                                placeholder="관련 티커 (예: 005930, AAPL)">
+                            <button id="ask-submit" class="btn btn-primary">
+                                ✨ 인사이트 카드 생성
+                            </button>
+                        </div>
+                    </div>
+                    <div id="ask-result" class="ask-result" style="display:none">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 인사이트 카드 목록 -->
+            <div id="page-cards" class="page">
+                <div class="page-header">
+                    <h2>📋 인사이트 카드</h2>
+                    <div class="header-actions">
+                        <select id="cards-filter-status" class="select-small">
+                            <option value="">전체 상태</option>
+                            <option value="active">활성</option>
+                            <option value="draft">초안</option>
+                            <option value="archived">보관</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="cards-list" class="cards-grid">
+                    <p class="empty-state">아직 인사이트 카드가 없습니다.<br>질문을 하면 자동으로 카드가 생성됩니다.</p>
+                </div>
+            </div>
+
+            <!-- 공시/뉴스 -->
+            <div id="page-events" class="page">
+                <div class="page-header">
+                    <h2>📰 공시 / 뉴스</h2>
+                    <button id="refresh-events" class="btn btn-secondary">🔄 새로고침</button>
+                </div>
+                <div id="events-list" class="events-list">
+                    <p class="empty-state">'새로고침'을 눌러 최신 공시/뉴스를 가져오세요</p>
+                </div>
+            </div>
+
+            <!-- 매매 기록 -->
+            <div id="page-trades" class="page">
+                <div class="page-header">
+                    <h2>📊 매매 기록</h2>
+                    <div class="header-actions">
+                        <button id="add-trade-btn" class="btn btn-primary">+ 기록 추가</button>
+                        <label class="btn btn-secondary">
+                            📄 CSV 업로드
+                            <input type="file" id="csv-upload" accept=".csv" style="display:none">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 성과 요약 -->
+                <div id="performance-summary" class="performance-card glass-card" style="display:none">
+                </div>
+
+                <!-- 매매 입력 폼 -->
+                <div id="trade-form-container" class="glass-card" style="display:none">
+                    <h3>📝 매매 기록 입력</h3>
+                    <form id="trade-form" class="trade-form">
+                        <div class="form-row">
+                            <input type="text" id="trade-ticker" placeholder="종목코드" required>
+                            <input type="text" id="trade-name" placeholder="종목명">
+                            <select id="trade-direction" required>
+                                <option value="buy">매수</option>
+                                <option value="sell">매도</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <input type="number" id="trade-quantity" placeholder="수량" required>
+                            <input type="number" id="trade-price" placeholder="단가" step="0.01" required>
+                            <input type="datetime-local" id="trade-time" required>
+                        </div>
+                        <div class="form-row">
+                            <textarea id="trade-reason" placeholder="진입/청산 사유 (선택)" rows="2"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">저장</button>
+                            <button type="button" id="cancel-trade" class="btn btn-ghost">취소</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div id="trades-list" class="trades-table">
+                    <p class="empty-state">매매 기록이 없습니다</p>
+                </div>
+            </div>
+
+            <!-- 검색 -->
+            <div id="page-search" class="page">
+                <div class="page-header">
+                    <h2>🔍 검색</h2>
+                </div>
+                <div class="search-container">
+                    <div class="search-bar glass-card">
+                        <input type="text" id="search-input" class="search-input"
+                            placeholder="예: 내가 삼성전자를 왜 좋게 봤지?">
+                        <button id="search-submit" class="btn btn-primary">검색</button>
+                    </div>
+                    <div id="search-results" class="search-results">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

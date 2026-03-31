@@ -1,0 +1,158 @@
+# Data Source Configurations
+
+# PDF Research Report Sources
+pdf_sources:
+  - name: naver_finance_research
+    type: web_scrape
+    enabled: true
+    base_url: "https://finance.naver.com/research/company_list.naver"
+    description: "Naver Finance Research Reports"
+
+    selectors:
+      report_list: "table.type_1 tr"
+      title: "td a.tit"
+      pdf_link: "td a[href*='.pdf']"
+      date: "td.date"
+      analyst: "td.comp_name"
+      firm: "td.comp_name"
+
+    pagination:
+      enabled: true
+      max_pages: 10
+      page_param: "page"
+
+    rate_limit: 1.0
+    timeout: 30
+
+    metadata:
+      country: "KR"
+      language: "ko"
+
+  - name: samsung_securities
+    type: direct_download
+    enabled: false  # Requires authentication
+    base_url: "https://www.samsungsecurities.com/research"
+    description: "Samsung Securities Research"
+    login_required: true
+    rate_limit: 0.5
+
+  - name: nh_investment
+    type: direct_download
+    enabled: false
+    base_url: "https://www.nhqv.com/research"
+    description: "NH Investment & Securities"
+    login_required: true
+    rate_limit: 0.5
+
+  - name: mirae_asset
+    type: direct_download
+    enabled: false
+    base_url: "https://securities.miraeasset.com/bbs/board/message/list.do"
+    description: "Mirae Asset Securities"
+    login_required: false
+    rate_limit: 0.5
+
+# News Article Sources
+news_sources:
+  - name: naver_finance_news
+    type: web_scrape
+    enabled: true
+    base_url: "https://finance.naver.com/news/mainnews.naver"
+    description: "Naver Finance News"
+
+    params: {}
+
+    selectors:
+      article_list: "ul.newsList li, ul.right_list_1_2 li"
+      title: "dd.articleSubject a, a"
+      link: "dd.articleSubject a, a"
+      date: "dd.articleSummary span.wdate, span.wdate"
+      summary: "dd.articleSummary"
+
+    pagination:
+      enabled: true
+      max_pages: 5
+      page_param: "page"
+
+    rate_limit: 2.0
+    timeout: 20
+
+    metadata:
+      country: "KR"
+      language: "ko"
+
+  - name: hankyung
+    type: web_scrape
+    enabled: false
+    base_url: "https://www.hankyung.com/finance/stock"
+    description: "Hankyung (Korea Economic Daily)"
+    rate_limit: 1.5
+
+  - name: maeil_business
+    type: web_scrape
+    enabled: false
+    base_url: "https://www.mk.co.kr/news/stock"
+    description: "Maeil Business Newspaper"
+    rate_limit: 1.5
+
+# Company Ticker Mapping (for entity linking)
+company_tickers:
+  - ticker: "005930"
+    name: "삼성전자"
+    aliases:
+      - "Samsung Electronics"
+      - "삼성전자"
+      - "삼성"
+
+  - ticker: "000660"
+    name: "SK하이닉스"
+    aliases:
+      - "SK Hynix"
+      - "SK하이닉스"
+      - "하이닉스"
+
+  - ticker: "035420"
+    name: "NAVER"
+    aliases:
+      - "NAVER"
+      - "네이버"
+
+  - ticker: "207940"
+    name: "삼성바이오로직스"
+    aliases:
+      - "Samsung Biologics"
+      - "삼성바이오로직스"
+      - "삼성바이오"
+
+  - ticker: "178320"
+    name: "서진시스템"
+    aliases:
+      - "Seojin System"
+      - "서진시스템"
+
+  # Add more companies as needed
+
+# Search Keywords (for filtering relevant content)
+keywords:
+  investment_opinion:
+    - "투자의견"
+    - "목표주가"
+    - "BUY"
+    - "HOLD"
+    - "SELL"
+    - "매수"
+    - "보유"
+    - "매도"
+
+  investment_points:
+    - "투자포인트"
+    - "투자 포인트"
+    - "긍정적"
+    - "성장"
+    - "확대"
+
+  risk_factors:
+    - "리스크"
+    - "위험요인"
+    - "우려"
+    - "부정적"

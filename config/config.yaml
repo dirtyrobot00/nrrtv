@@ -1,0 +1,121 @@
+# Narrative Insight Configuration
+
+# Database Configuration
+database:
+  type: sqlite  # or postgresql
+  path: data/narrative_insight.db  # for sqlite
+  # PostgreSQL configuration (uncomment when needed)
+  # host: localhost
+  # port: 5432
+  # database: narrative_insight
+  # user: ${DB_USER}
+  # password: ${DB_PASSWORD}
+  echo: false  # Set to true for SQL logging
+
+# Neo4j Configuration
+neo4j:
+  uri: ${NEO4J_URI}
+  user: ${NEO4J_USER}
+  password: ${NEO4J_PASSWORD}
+  max_connection_lifetime: 3600
+  max_connection_pool_size: 50
+  connection_acquisition_timeout: 60
+
+# API Keys
+dart:
+  api_key: ${DART_API_KEY}
+
+# Collector Configuration
+collectors:
+  pdf:
+    enabled: true
+    output_dir: data/raw/research_report
+    rate_limit: 1.0  # requests per second
+    timeout: 30  # seconds
+    max_retries: 3
+    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+
+  financial_report:
+    enabled: true
+    output_dir: data/raw/financial_report
+    rate_limit: 1.0  # requests per second
+    timeout: 30  # seconds
+    max_retries: 3
+
+  news:
+    enabled: true
+    output_dir: data/raw/html
+    rate_limit: 2.0  # requests per second
+    timeout: 20
+    max_retries: 3
+    user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+
+# Parser Configuration
+parsers:
+  pdf:
+    ocr_enabled: ${ENABLE_OCR}
+    tesseract_lang: "kor+eng"
+    confidence_threshold: 0.5
+    table_detection: true
+    extract_images: false
+
+  news:
+    nlp_backend: "kiwipiepy"  # or "konlpy"
+    sentiment_enabled: ${ENABLE_SENTIMENT_ANALYSIS}
+    sentiment_model: "kobert"  # or "koelectra"
+    entity_linking_enabled: true
+
+# Storage Configuration
+storage:
+  intermediate_storage: sqlite  # before KG insertion
+  enable_kg_update: ${ENABLE_KG_UPDATE}
+  batch_size: 100  # for bulk operations
+
+# Pipeline Configuration
+pipeline:
+  max_retries: ${MAX_RETRIES}
+  retry_delay: ${RETRY_DELAY}  # seconds
+  exponential_backoff: true
+  dead_letter_queue_enabled: true
+
+# Scheduler Configuration
+scheduler:
+  enabled: ${SCHEDULER_ENABLED}
+  timezone: "Asia/Seoul"
+  job_store: "sqlite"  # APScheduler job store
+  job_store_path: "data/scheduler.db"
+
+  jobs:
+    - name: collect_research_reports
+      schedule: "0 21 * * *"  # Daily at 9 PM KST
+      task: "pipeline.tasks.collect_pdfs_task"
+      enabled: true
+
+    - name: collect_news
+      schedule: "0 */2 * * *"  # Every 2 hours
+      task: "pipeline.tasks.collect_news_task"
+      enabled: true
+
+    - name: health_check
+      schedule: "*/15 * * * *"  # Every 15 minutes
+      task: "pipeline.tasks.health_check_task"
+      enabled: true
+
+# Logging Configuration
+logging:
+  level: ${LOG_LEVEL}
+  format: "json"  # or "text"
+  output:
+    console: true
+    file: ${LOG_TO_FILE}
+    file_path: "logs/app.log"
+    max_bytes: 10485760  # 10MB
+    backup_count: 5
+
+# Feature Flags
+features:
+  enable_ocr: ${ENABLE_OCR}
+  enable_sentiment: ${ENABLE_SENTIMENT_ANALYSIS}
+  enable_kg_update: ${ENABLE_KG_UPDATE}
+  enable_monitoring: false
+  enable_api: false

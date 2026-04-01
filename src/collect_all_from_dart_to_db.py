@@ -32,7 +32,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.collectors.financial_report_collector import FinancialReportCollector
+from src.collectors.financial_report.financial_report_collector import FinancialReportCollector
 from src.models.document import DocumentType
 from src.storage.document_store import DocumentStore
 from src.utils.config import get_config

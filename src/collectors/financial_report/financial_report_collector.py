@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 
 import requests
 
-from src.collectors.base import BaseCollector, CollectorError
+from src.collectors.financial_report.base import BaseCollector, CollectorError
 from src.models.document import Document, DocumentType
 from src.models.financial_report import FinancialReport, ReportType, ReportPeriod
 from src.storage.document_store import DocumentStore

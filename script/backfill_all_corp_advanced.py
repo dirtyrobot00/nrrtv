@@ -46,7 +46,7 @@ except ImportError:
 
 ROOT       = Path(__file__).parent.parent
 CORP_LIST  = ROOT / "data" / "all_corp.list"
-COLLECTOR  = ROOT / "src" / "collectors" / "collect_all_from_dart_to_db.py"
+COLLECTOR  = ROOT / "src" / "collectors" / "financial_report" / "collect_all_from_dart_to_db.py"
 STATE_DIR  = ROOT / ".backfill_progress"
 
 
@@ -144,6 +144,7 @@ def run_backfill(code: str, from_date: str, dry_run: bool) -> bool:
         "--backfill",
         "--from-date", from_date,
         "--stock-code", code,
+        "--doc-delay", "0.5",
     ]
     if dry_run:
         cmd.append("--dry-run")

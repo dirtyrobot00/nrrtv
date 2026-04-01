@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
-from src.collectors.base import BaseCollector, CollectorError
+from src.collectors.financial_report.base import BaseCollector, CollectorError
 from src.models.document import Document, DocumentType
 from src.utils.config import get_config
 

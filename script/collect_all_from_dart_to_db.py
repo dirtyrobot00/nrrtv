@@ -40,7 +40,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # ─── src 모듈 임포트 ─────────────────────────────────────────────────────────
-from src.collectors.financial_report_collector import FinancialReportCollector
+from src.collectors.financial_report.financial_report_collector import FinancialReportCollector
 from src.models.document import DocumentType
 from src.utils.config import get_config
 from src.utils.logger import setup_logging, get_logger

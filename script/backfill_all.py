@@ -39,7 +39,7 @@ from collect_all_from_dart_to_db import (
     PBLNTF_TYPE_NAMES,
 )
 
-from src.collectors.financial_report_collector import FinancialReportCollector
+from src.collectors.financial_report.financial_report_collector import FinancialReportCollector
 from src.utils.config import get_config
 from src.utils.logger import setup_logging, get_logger
 

@@ -49,7 +49,7 @@ from dotenv import load_dotenv
 
 # 프로젝트 루트 및 extractor 디렉터리를 sys.path에 추가
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-sys.path.insert(0, str(Path(__file__).parent.parent / "extractor"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "extractor"))
 from extern_extract_financial_report_table_flattened import extract as extract_xml_file
 
 # ---------------------------------------------------------------------------
@@ -63,6 +63,11 @@ DART_CORPCODE_URL = "https://opendart.fss.or.kr/api/corpCode.xml"
 PBLNTF_TYPES = ["A", "B", "E", "I"]  # 정기/주요사항/기타/거래소 (D=지분공시 제외)
 
 PAGE_COUNT = 100
+
+
+class DartQuotaExceededError(Exception):
+    """DART API 사용한도 초과 (status=020) 시 발생."""
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +299,10 @@ class DartToDBCollector:
 
             if status == "013":   # 조회 결과 없음 (정상)
                 break
+            if status == "020":   # 사용한도 초과 → 즉시 중단
+                msg = data.get("message", "사용한도를 초과하였습니다.")
+                self._log(f"  [ERROR] DART API status=020: {msg} → 즉시 중단")
+                raise DartQuotaExceededError(msg)
             if status != "000":
                 self._log(f"  [WARN] DART API status={status}: {data.get('message', '')}")
                 break
@@ -429,7 +438,7 @@ class DartToDBCollector:
             }
             for future in as_completed(future_to_ty):
                 ty = future_to_ty[future]
-                items = filter_fn(future.result())
+                items = filter_fn(future.result())  # DartQuotaExceededError 그대로 전파
                 self._log(f"  [{ty}] {bgn_de}~{end_de}: {len(items)}건")
                 total_items.extend(items)
 
@@ -549,7 +558,11 @@ class DartToDBCollector:
         self._log(f"[polling] {today}{stock_info}")
         self._log(f"{'='*60}")
 
-        n = self.collect_list_for_period(today, today)
+        try:
+            n = self.collect_list_for_period(today, today)
+        except DartQuotaExceededError as e:
+            self._log(f"\n[ABORT] DART 사용한도 초과: {e}")
+            sys.exit(1)
         self._log(f"  → 수집 {n}건")
 
         done = self.process_pending()
@@ -594,11 +607,17 @@ class DartToDBCollector:
         self._log(f"{'─'*60}")
 
         total_listed = 0
-        for i, (bgn, end_m) in enumerate(months, 1):
-            self._log(f"  [{i:2d}/{len(months)}] {bgn} ~ {end_m}", )
-            n = self.collect_list_for_period(bgn, end_m)
-            total_listed += n
-            self._log(f"          → {n}건  (누적 {total_listed}건)")
+        try:
+            for i, (bgn, end_m) in enumerate(months, 1):
+                self._log(f"  [{i:2d}/{len(months)}] {bgn} ~ {end_m}", )
+                n = self.collect_list_for_period(bgn, end_m)
+                total_listed += n
+                self._log(f"          → {n}건  (누적 {total_listed}건)")
+        except DartQuotaExceededError as e:
+            self._log(f"\n[ABORT] DART 사용한도 초과로 수집 중단: {e}")
+            self._log(f"  Phase 1 중단 시점 누적: {total_listed}건")
+            self._print_stats()
+            sys.exit(1)
 
         self._log(f"\n  Phase 1 완료: 총 {total_listed}건 수집")
 

@@ -35,6 +35,7 @@ import io
 import os
 import sys
 import tempfile
+import threading
 from pathlib import Path
 import time
 import zipfile
@@ -104,6 +105,7 @@ class DartToDBCollector:
 
         self.client = httpx.Client(timeout=60, follow_redirects=True)
         self._conn: Optional[psycopg2.extensions.connection] = None
+        self._stop_event = threading.Event()  # 사용한도 초과 시 전체 스레드 즉시 중단용
 
         # stock_code → corp_code 매핑 (지정 종목이 있을 때만 로드)
         self._corp_code_map: dict[str, str] = {}
@@ -276,6 +278,9 @@ class DartToDBCollector:
         page_no = 1
 
         while True:
+            if self._stop_event.is_set():
+                return []
+
             params = {
                 "crtfc_key":  self.api_key,
                 "pblntf_ty":  pblntf_ty,
@@ -302,6 +307,7 @@ class DartToDBCollector:
             if status == "020":   # 사용한도 초과 → 즉시 중단
                 msg = data.get("message", "사용한도를 초과하였습니다.")
                 self._log(f"  [ERROR] DART API status=020: {msg} → 즉시 중단")
+                self._stop_event.set()  # 다른 스레드도 즉시 중단
                 raise DartQuotaExceededError(msg)
             if status != "000":
                 self._log(f"  [WARN] DART API status={status}: {data.get('message', '')}")
@@ -431,6 +437,8 @@ class DartToDBCollector:
             corp_code = None
             filter_fn = self._filter_by_stock_code
 
+        quota_err: Optional[DartQuotaExceededError] = None
+
         with ThreadPoolExecutor(max_workers=len(PBLNTF_TYPES)) as pool:
             future_to_ty = {
                 pool.submit(self._fetch_all_list, ty, bgn_de, end_de, corp_code): ty
@@ -438,9 +446,19 @@ class DartToDBCollector:
             }
             for future in as_completed(future_to_ty):
                 ty = future_to_ty[future]
-                items = filter_fn(future.result())  # DartQuotaExceededError 그대로 전파
-                self._log(f"  [{ty}] {bgn_de}~{end_de}: {len(items)}건")
-                total_items.extend(items)
+                try:
+                    items = filter_fn(future.result())
+                    self._log(f"  [{ty}] {bgn_de}~{end_de}: {len(items)}건")
+                    total_items.extend(items)
+                except DartQuotaExceededError as e:
+                    quota_err = e
+                    for f in future_to_ty:
+                        f.cancel()   # 아직 시작 안 한 future 취소
+                    break            # as_completed 루프 탈출 → executor 종료 대기
+            # executor.__exit__: 실행 중 스레드는 _stop_event 확인 후 즉시 반환
+
+        if quota_err:
+            raise quota_err
 
         n = self._upsert_disclosures(total_items)
         self._stats["disclosures_upserted"] += n
@@ -558,11 +576,7 @@ class DartToDBCollector:
         self._log(f"[polling] {today}{stock_info}")
         self._log(f"{'='*60}")
 
-        try:
-            n = self.collect_list_for_period(today, today)
-        except DartQuotaExceededError as e:
-            self._log(f"\n[ABORT] DART 사용한도 초과: {e}")
-            sys.exit(1)
+        n = self.collect_list_for_period(today, today)  # DartQuotaExceededError → 상위로 전파
         self._log(f"  → 수집 {n}건")
 
         done = self.process_pending()
@@ -607,17 +621,11 @@ class DartToDBCollector:
         self._log(f"{'─'*60}")
 
         total_listed = 0
-        try:
-            for i, (bgn, end_m) in enumerate(months, 1):
-                self._log(f"  [{i:2d}/{len(months)}] {bgn} ~ {end_m}", )
-                n = self.collect_list_for_period(bgn, end_m)
-                total_listed += n
-                self._log(f"          → {n}건  (누적 {total_listed}건)")
-        except DartQuotaExceededError as e:
-            self._log(f"\n[ABORT] DART 사용한도 초과로 수집 중단: {e}")
-            self._log(f"  Phase 1 중단 시점 누적: {total_listed}건")
-            self._print_stats()
-            sys.exit(1)
+        for i, (bgn, end_m) in enumerate(months, 1):
+            self._log(f"  [{i:2d}/{len(months)}] {bgn} ~ {end_m}", )
+            n = self.collect_list_for_period(bgn, end_m)  # DartQuotaExceededError → 상위로 전파
+            total_listed += n
+            self._log(f"          → {n}건  (누적 {total_listed}건)")
 
         self._log(f"\n  Phase 1 완료: 총 {total_listed}건 수집")
 
@@ -749,44 +757,49 @@ def main() -> None:
     else:
         print("[필터] 전체 종목")
 
-    with DartToDBCollector(
-        api_key     = api_key,
-        db_url      = db_url,
-        dry_run     = args.dry_run,
-        list_delay  = args.list_delay,
-        doc_delay   = args.doc_delay,
-        verbose     = True,
-        stock_codes = stock_codes,
-    ) as collector:
+    try:
+        with DartToDBCollector(
+            api_key     = api_key,
+            db_url      = db_url,
+            dry_run     = args.dry_run,
+            list_delay  = args.list_delay,
+            doc_delay   = args.doc_delay,
+            verbose     = True,
+            stock_codes = stock_codes,
+        ) as collector:
 
-        if args.once:
-            collector.poll_once()
-            collector._print_stats()
+            if args.once:
+                collector.poll_once()
+                collector._print_stats()
 
-        elif args.interval:
-            collector.run(interval_sec=args.interval)
+            elif args.interval:
+                collector.run(interval_sec=args.interval)
 
-        elif args.backfill:
-            collector.backfill(from_date=args.from_date, to_date=args.to_date, list_only=args.list_only)
+            elif args.backfill:
+                collector.backfill(from_date=args.from_date, to_date=args.to_date, list_only=args.list_only)
 
-        elif args.pending:
-            done = collector.process_pending(limit=args.limit)
-            print(f"\n원문 처리 완료: {done}건")
-            collector._print_stats()
+            elif args.pending:
+                done = collector.process_pending(limit=args.limit)
+                print(f"\n원문 처리 완료: {done}건")
+                collector._print_stats()
 
-        elif args.reset_bad_text:
-            reset = collector.reset_bad_plain_text()
-            if reset > 0:
-                print(f"\n{reset}건 pending 전환 완료. 재처리 시작...")
-                total_done = 0
-                while True:
-                    done = collector.process_pending(limit=args.limit)
-                    if done == 0:
-                        break
-                    total_done += done
-                    print(f"  → {done}건 처리 (누적 {total_done}건)")
-                print(f"\n재처리 완료: 총 {total_done}건")
-            collector._print_stats()
+            elif args.reset_bad_text:
+                reset = collector.reset_bad_plain_text()
+                if reset > 0:
+                    print(f"\n{reset}건 pending 전환 완료. 재처리 시작...")
+                    total_done = 0
+                    while True:
+                        done = collector.process_pending(limit=args.limit)
+                        if done == 0:
+                            break
+                        total_done += done
+                        print(f"  → {done}건 처리 (누적 {total_done}건)")
+                    print(f"\n재처리 완료: 총 {total_done}건")
+                collector._print_stats()
+
+    except DartQuotaExceededError as e:
+        print(f"\n[ABORT] DART 사용한도 초과 — 프로그램을 종료합니다: {e}", flush=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

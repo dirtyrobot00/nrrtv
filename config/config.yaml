@@ -2,14 +2,7 @@
 
 # Database Configuration
 database:
-  type: sqlite  # or postgresql
-  path: data/narrative_insight.db  # for sqlite
-  # PostgreSQL configuration (uncomment when needed)
-  # host: localhost
-  # port: 5432
-  # database: narrative_insight
-  # user: ${DB_USER}
-  # password: ${DB_PASSWORD}
+  url: ${DATABASE_URL}
   echo: false  # Set to true for SQL logging
 
 # Neo4j Configuration

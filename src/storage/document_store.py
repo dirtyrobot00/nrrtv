@@ -80,6 +80,7 @@ class ResearchReportORM(Base):
     risk_factors_json = Column(Text, nullable=True)  # JSON list
     confidence_score = Column(Float, nullable=False, default=0.0)
     extracted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    content = Column(Text, nullable=True)  # Raw extracted text from PDF
     metadata_json = Column(Text, nullable=True)
 
     # Relationship
@@ -102,6 +103,7 @@ class ResearchReportORM(Base):
             "risk_factors": json.loads(self.risk_factors_json) if self.risk_factors_json else [],
             "confidence_score": self.confidence_score,
             "extracted_at": self.extracted_at,
+            "content": self.content,
             "metadata": json.loads(self.metadata_json) if self.metadata_json else {}
         }
 
@@ -236,19 +238,13 @@ class DocumentStore(LoggerMixin):
             database_url: Database connection URL. If None, loads from config.
         """
         if database_url is None:
-            config = get_config()
-            db_type = config.get("database.type", "sqlite")
-            if db_type == "sqlite":
-                db_path = config.get("database.path", "data/narrative_insight.db")
-                database_url = f"sqlite:///{db_path}"
-            else:
-                # PostgreSQL configuration
-                host = config.get("database.host", "localhost")
-                port = config.get("database.port", 5432)
-                database = config.get("database.database", "narrative_insight")
-                user = config.get("database.user", "postgres")
-                password = config.get("database.password", "")
-                database_url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
+            import os
+            database_url = os.getenv("DATABASE_URL")
+            if not database_url:
+                config = get_config()
+                database_url = config.get("database.url")
+            if not database_url:
+                raise ValueError("DATABASE_URL 환경변수 또는 config.yaml database.url 이 설정되어 있지 않습니다.")
 
         self.database_url = database_url
         self.engine = create_engine(database_url, echo=False)
@@ -462,6 +458,7 @@ class DocumentStore(LoggerMixin):
                 risk_factors_json=json.dumps(report_data.get("risk_factors", [])),
                 confidence_score=report_data.get("confidence_score", 0.0),
                 extracted_at=report_data.get("extracted_at", datetime.utcnow()),
+                content=report_data.get("content"),
                 metadata_json=json.dumps(report_data.get("metadata", {}))
             )
 

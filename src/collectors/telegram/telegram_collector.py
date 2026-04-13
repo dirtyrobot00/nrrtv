@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 from bs4 import BeautifulSoup
 
+from src.collectors.telegram.article_fetcher import ArticleFetcher
 from src.utils.logger import LoggerMixin
 
 
@@ -31,8 +32,8 @@ class TelegramCollector(LoggerMixin):
 
     BASE_URL = "https://t.me/s/{username}"
     # 요청 간 대기: 5~10초 랜덤 (탐지 회피)
-    MIN_DELAY = 5.0
-    MAX_DELAY = 10.0
+    MIN_DELAY = 1.0
+    MAX_DELAY = 1.5
 
     HEADERS = {
         "User-Agent": (
@@ -47,13 +48,15 @@ class TelegramCollector(LoggerMixin):
         "DNT": "1",
     }
 
-    def __init__(self, max_retries: int = 3, timeout: int = 30):
+    def __init__(self, max_retries: int = 3, timeout: int = 30, fetch_articles: bool = False):
         self.max_retries = max_retries
+        self.fetch_articles = fetch_articles
         self.client = httpx.Client(
             headers=self.HEADERS,
             timeout=timeout,
             follow_redirects=True,
         )
+        self._article_fetcher: Optional[ArticleFetcher] = ArticleFetcher() if fetch_articles else None
         self._last_request_time: float = 0.0
 
     # ── Public API ───────────────────────────────────────────────────────
@@ -102,11 +105,13 @@ class TelegramCollector(LoggerMixin):
 
             if since_msg_id is not None:
                 new_messages = [m for m in messages if m["telegram_msg_id"] > since_msg_id]
+                self._maybe_enrich(new_messages)
                 all_messages.extend(new_messages)
                 if len(new_messages) < len(messages):
                     self.logger.info("reached_known_messages", username=username, since_msg_id=since_msg_id)
                     break
             else:
+                self._maybe_enrich(messages)
                 all_messages.extend(messages)
                 break  # since_msg_id 없으면 최신 1페이지만
 
@@ -179,6 +184,7 @@ class TelegramCollector(LoggerMixin):
             filtered, reached_end = self._apply_until_filters(messages, until_msg_id, until_date)
 
             if filtered:
+                self._maybe_enrich(filtered)
                 if save_callback:
                     save_callback(filtered)
                 total += len(filtered)
@@ -256,12 +262,20 @@ class TelegramCollector(LoggerMixin):
 
     def close(self) -> None:
         self.client.close()
+        if self._article_fetcher:
+            self._article_fetcher.close()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         self.close()
+
+    def _maybe_enrich(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """fetch_articles=True 일 때만 기사 본문을 채운다."""
+        if self._article_fetcher and messages:
+            self._article_fetcher.enrich_messages(messages)
+        return messages
 
     # ── Internal helpers ─────────────────────────────────────────────────
 
